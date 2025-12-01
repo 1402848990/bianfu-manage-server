@@ -4,6 +4,18 @@
 root
 w888888888888888W
 
+<!-- 时光 -->
+38.55.193.129
+root
+##mLeX*uO3
+
+<!-- 0079 -->
+38.55.198.178
+root
+85ZsD1*UKV
+
+
+
 
 <!-- 打包 -->
 pyinstaller --onefile --windowed --hidden-import=comtypes --hidden-import=comtypes.stream --add-data "logo.ico;." --icon=logo.ico  --name=账蝙蝠用户管理 蝙蝠用户管理.py
@@ -40,7 +52,7 @@ sudo apt install mysql-server mysql-client -y
 
 <!-- 设置密码 -->
 mysql -u root -p
-ALTER USER 'root'@'localhost' IDENTIFIED BY '你的新密码';
+ALTER USER 'root'@'localhost' IDENTIFIED BY '123456';
 FLUSH PRIVILEGES;
 EXIT;
 
@@ -49,15 +61,17 @@ sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
 <!-- 重启mysql -->
 sudo systemctl restart mysql
 
+
 -- 创建 root@% 用户（危险！）
-CREATE USER 'root'@'%' IDENTIFIED BY '你的强密码';
+mysql -u root -p
+CREATE USER 'root'@'%' IDENTIFIED BY '123456';
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 
 Sql
 编辑
 -- 登录 MySQL（sudo mysql）
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '你的密码';
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';
 FLUSH PRIVILEGES;
 EXIT;
 

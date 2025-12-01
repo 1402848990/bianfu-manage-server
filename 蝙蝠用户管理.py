@@ -321,9 +321,9 @@ class AccountManagerGUI:
         host = ''
 
         if auth_code.startswith('sg'):
-            host = ''  # 时光
+             host = 'http://38.55.193.129:8000'  # 时光
         elif auth_code.startswith('0079'):
-            host = ''  # 0079
+            host = 'http://38.55.198.178:8000'  # 0079
         elif auth_code.startswith('xg'):
             host = 'http://68.64.179.202:8000'  # 西瓜
         elif IS_TEST:
@@ -357,9 +357,9 @@ class AccountManagerGUI:
         host = ''
 
         if auth_code.startswith('sg'):
-            host = ''  # 时光
+            host = 'http://38.55.193.129:8000'  # 时光
         elif auth_code.startswith('0079'):
-            host = ''  # 0079
+             host = 'http://38.55.198.178:8000'  # 0079
         elif auth_code.startswith('xg'):
             host = 'http://68.64.179.202:8000'  # 西瓜
         elif IS_TEST:
