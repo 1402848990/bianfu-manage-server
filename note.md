@@ -115,3 +115,14 @@ nohup gunicorn \
 
   <!-- 查看进程 -->
   ps aux | grep gunicorn
+
+
+  <!-- 数据库不去重修改 -->
+  -- 查看索引
+SHOW CREATE TABLE accounts;
+
+-- 删除唯一索引（假设索引名是 account）
+ALTER TABLE accounts DROP INDEX account;
+
+-- 或者如果索引是自动生成的，可能是：
+-- ALTER TABLE accounts DROP INDEX ix_accounts_account;

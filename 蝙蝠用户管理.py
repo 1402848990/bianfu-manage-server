@@ -13,7 +13,7 @@ from PJYSDK import *
 # ----------------------------
 # 配置
 # ----------------------------
-IS_TEST = False
+IS_TEST = FALSE
 BASE_URL = "http://localhost:5500"  # 请根据实际修改
 # BASE_URL = "http://68.64.179.202:8000"  # 请根据实际修改
 REFRESH_INTERVAL = 4000  # 5秒，单位毫秒
@@ -230,8 +230,23 @@ class AccountManagerGUI:
         )
         self.account_input.pack(fill=BOTH, expand=YES, pady=(0, 10))
 
+        # 新增：自动去重复选框 + 按钮
+        btn_frame = ttk.Frame(add_frame)
+        btn_frame.pack(fill=X)
+
+        # 复选框变量
+        self.disable_dedup_var = tk.BooleanVar(value=False)  # 默认不勾选 → 启用去重
+
+        dedup_check = ttk.Checkbutton(
+            btn_frame,
+            text="不去重",
+            variable=self.disable_dedup_var,
+            bootstyle="warning"
+        )
+        dedup_check.pack(side=LEFT)
+
         self.add_btn = ttk.Button(
-            add_frame,
+            btn_frame,
             text="添加账号",
             bootstyle=SUCCESS,
             command=self.add_accounts,
@@ -321,7 +336,7 @@ class AccountManagerGUI:
         host = ''
 
         if auth_code.startswith('sg'):
-             host = 'http://38.55.193.129:8000'  # 时光
+            host = 'http://38.55.193.129:8000'  # 时光
         elif auth_code.startswith('0079'):
             host = 'http://38.55.198.178:8000'  # 0079
         elif auth_code.startswith('xg'):
@@ -332,10 +347,15 @@ class AccountManagerGUI:
             host = 'http://68.64.179.202:8000'  # 西瓜
 
         print("使用的host:", host)
+        # 获取是否禁用去重
+        disable_dedup = self.disable_dedup_var.get()
 
         try:
             response = requests.post(
-                f"{host}/add_accounts", json=accounts, timeout=15)
+                f"{host}/add_accounts", json={
+                    "accounts": accounts,
+                    "disable_dedup": disable_dedup  # 新增字段
+                }, timeout=15)
             if response.status_code == 201:
                 data = response.json()
                 msg = f"成功添加 {data['message']}，跳过 {data['skipped_due_to_duplicate_or_exist']} 个重复项。"
@@ -359,7 +379,7 @@ class AccountManagerGUI:
         if auth_code.startswith('sg'):
             host = 'http://38.55.193.129:8000'  # 时光
         elif auth_code.startswith('0079'):
-             host = 'http://38.55.198.178:8000'  # 0079
+            host = 'http://38.55.198.178:8000'  # 0079
         elif auth_code.startswith('xg'):
             host = 'http://68.64.179.202:8000'  # 西瓜
         elif IS_TEST:

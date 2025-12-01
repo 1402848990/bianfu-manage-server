@@ -30,7 +30,7 @@ class Account(Base):
     __tablename__ = 'accounts'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    account = Column(String(255), nullable=False, unique=True)
+    account = Column(String(255), nullable=False)  # ← 移除 unique=True
     status = Column(Enum('unused', 'used'), default='unused')
     created_at = Column(DateTime, default=datetime.utcnow)
     extracted_by = Column(String(255), nullable=True)
@@ -49,41 +49,53 @@ app = Flask(__name__)
 @app.route('/add_accounts', methods=['POST'])
 def add_accounts():
     data = request.get_json()
-    if not isinstance(data, list):
-        return jsonify({"error": "Expected a list of account strings"}), 400
+    
+    # 兼容旧格式（纯列表）和新格式（带参数的对象）
+    if isinstance(data, list):
+        # 旧客户端：默认启用去重
+        accounts_list = data
+        disable_dedup = False
+    elif isinstance(data, dict):
+        accounts_list = data.get('accounts', [])
+        disable_dedup = bool(data.get('disable_dedup', False))
+    else:
+        return jsonify({"error": "Invalid request format"}), 400
 
-    # Step 1: 提取并清洗非空字符串账号
-    raw_accounts = [acc.strip() for acc in data if isinstance(acc, str) and acc.strip()]
+    if not isinstance(accounts_list, list):
+        return jsonify({"error": "Expected 'accounts' to be a list"}), 400
+
+    raw_accounts = [acc.strip() for acc in accounts_list if isinstance(acc, str) and acc.strip()]
     if not raw_accounts:
         return jsonify({"error": "无效账号"}), 400
 
-    # Step 2: 去除当前批次内的重复（保留顺序可选，这里用 dict.fromkeys 保持插入顺序）
-    unique_in_batch = list(dict.fromkeys(raw_accounts))  # Python 3.7+ 保持顺序
-
     session = SessionLocal()
     try:
-        # Step 3: 查询数据库中已存在的账号
-        existing_in_db = session.query(Account.account).filter(
-            Account.account.in_(unique_in_batch)
-        ).all()
-        existing_set = {row[0] for row in existing_in_db}
-
-        # Step 4: 过滤出真正需要插入的新账号
-        new_accounts = [
-            Account(account=acc) for acc in unique_in_batch if acc not in existing_set
-        ]
-
-        if new_accounts:
+        if disable_dedup:
+            # ❗ 不去重：直接为每个账号创建新记录（即使重复）
+            new_accounts = [Account(account=acc) for acc in raw_accounts]
             session.bulk_save_objects(new_accounts)
             session.commit()
             added = len(new_accounts)
+            skipped = 0
         else:
-            added = 0
+            # ✅ 正常去重逻辑
+            unique_in_batch = list(dict.fromkeys(raw_accounts))
+            existing_in_db = session.query(Account.account).filter(
+                Account.account.in_(unique_in_batch)
+            ).all()
+            existing_set = {row[0] for row in existing_in_db}
+            new_accounts = [
+                Account(account=acc) for acc in unique_in_batch if acc not in existing_set
+            ]
+            if new_accounts:
+                session.bulk_save_objects(new_accounts)
+                session.commit()
+            added = len(new_accounts)
+            skipped = len(raw_accounts) - added
 
-        skipped_total = len(raw_accounts) - added  # 包括批次内重复 + 数据库已有
         return jsonify({
             "message": f"{added}个账号添加成功！",
-            "skipped_due_to_duplicate_or_exist": skipped_total
+            "skipped_due_to_duplicate_or_exist": skipped
         }), 201
 
     except Exception as e:
