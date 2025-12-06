@@ -13,7 +13,7 @@ from PJYSDK import *
 # ----------------------------
 # 配置
 # ----------------------------
-IS_TEST = FALSE
+IS_TEST = True
 BASE_URL = "http://localhost:5500"  # 请根据实际修改
 # BASE_URL = "http://68.64.179.202:8000"  # 请根据实际修改
 REFRESH_INTERVAL = 4000  # 5秒，单位毫秒
@@ -64,6 +64,7 @@ class AccountManagerGUI:
         global is_access
         self.root = root
         self.root.title("蝙蝠账号管理系统【作者w5775213344】")
+        # self.root.title("蝙蝠账号管理系统")
         self.root.geometry("1400x1000")
         self.root.minsize(900, 800)
 
@@ -337,12 +338,15 @@ class AccountManagerGUI:
 
         if auth_code.startswith('sg'):
             host = 'http://38.55.193.129:8000'  # 时光
+        elif IS_TEST:
+            host = BASE_URL
         elif auth_code.startswith('0079'):
             host = 'http://38.55.198.178:8000'  # 0079
         elif auth_code.startswith('xg'):
             host = 'http://68.64.179.202:8000'  # 西瓜
-        elif IS_TEST:
-            host = BASE_URL
+        elif auth_code.startswith('whns'):
+            host = 'http://68.64.179.234:8000'  # 我还能睡
+        
         elif auth_code == 'cchppdqk24':  # 我的授权码
             host = 'http://68.64.179.202:8000'  # 西瓜
 
@@ -378,12 +382,15 @@ class AccountManagerGUI:
 
         if auth_code.startswith('sg'):
             host = 'http://38.55.193.129:8000'  # 时光
+        elif IS_TEST:
+            host = BASE_URL
         elif auth_code.startswith('0079'):
             host = 'http://38.55.198.178:8000'  # 0079
         elif auth_code.startswith('xg'):
             host = 'http://68.64.179.202:8000'  # 西瓜
-        elif IS_TEST:
-            host = BASE_URL
+        elif auth_code.startswith('whns'):
+            host = 'http://68.64.179.234:8000'  # 我还能睡
+
         elif auth_code == 'cchppdqk24':  # 我的授权码
             host = 'http://68.64.179.202:8000'  # 西瓜
 
