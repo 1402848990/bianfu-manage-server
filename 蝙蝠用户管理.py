@@ -13,7 +13,7 @@ from PJYSDK import *
 # ----------------------------
 # 配置
 # ----------------------------
-IS_TEST = True
+IS_TEST = False
 BASE_URL = "http://localhost:5500"  # 请根据实际修改
 # BASE_URL = "http://68.64.179.202:8000"  # 请根据实际修改
 REFRESH_INTERVAL = 4000  # 5秒，单位毫秒
@@ -231,6 +231,67 @@ class AccountManagerGUI:
         )
         self.account_input.pack(fill=BOTH, expand=YES, pady=(0, 10))
 
+        # ===== 黑名单管理区域 =====
+        blacklist_frame = ttk.Labelframe(main_frame, text="黑名单管理", padding=15)
+        blacklist_frame.pack(fill=X, pady=(0, 20))
+
+        # 上方：输入框（用于新增）
+        self.blacklist_input = scrolledtext.ScrolledText(
+            blacklist_frame,
+            height=4,
+            font=("Consolas", 11),
+            wrap=WORD,
+            relief=FLAT,
+            padx=10,
+            pady=10
+        )
+        self.blacklist_input.pack(fill=X, pady=(0, 10))
+
+        # 按钮区域（新增 + 刷新 + 删除选中）
+        bl_btn_frame = ttk.Frame(blacklist_frame)
+        bl_btn_frame.pack(fill=X, pady=(0, 10))
+
+        self.add_bl_btn = ttk.Button(
+            bl_btn_frame,
+            text="加入黑名单",
+            bootstyle=WARNING,
+            command=self.add_to_blacklist,
+            width=15
+        )
+        self.add_bl_btn.pack(side=LEFT, padx=(0, 10))
+
+        self.refresh_bl_btn = ttk.Button(
+            bl_btn_frame,
+            text="刷新列表",
+            bootstyle=INFO,
+            command=self.load_blacklist,
+            width=15
+        )
+        self.refresh_bl_btn.pack(side=LEFT, padx=(0, 10))
+
+        self.del_bl_btn = ttk.Button(
+            bl_btn_frame,
+            text="删除选中",
+            bootstyle=DANGER,
+            command=self.remove_selected_blacklist,
+            width=15
+        )
+        self.del_bl_btn.pack(side=LEFT)
+
+        # 下方：显示当前黑名单（支持多选）
+        ttk.Label(blacklist_frame, text="当前黑名单（可多选后点击“删除选中”）:", font=self.font_normal).pack(anchor=W, pady=(5, 5))
+        self.blacklist_display = tk.Listbox(
+            blacklist_frame,
+            height=6,
+            font=("Consolas", 11),
+            selectmode=tk.EXTENDED,  # ← 关键：允许多选
+            exportselection=False
+        )
+        self.blacklist_display.pack(fill=X, pady=(0, 5))
+
+        # 初始加载黑名单
+        self.load_blacklist()
+
         # 新增：自动去重复选框 + 按钮
         btn_frame = ttk.Frame(add_frame)
         btn_frame.pack(fill=X)
@@ -335,20 +396,8 @@ class AccountManagerGUI:
     def _add_accounts_thread(self, accounts):
         auth_code = self.auth_code_var.get().strip()
         host = ''
-
-        if auth_code.startswith('sg'):
-            host = 'http://38.55.193.129:8000'  # 时光
-        elif IS_TEST:
-            host = BASE_URL
-        elif auth_code.startswith('0079'):
-            host = 'http://38.55.198.178:8000'  # 0079
-        elif auth_code.startswith('xg'):
-            host = 'http://68.64.179.202:8000'  # 西瓜
-        elif auth_code.startswith('whns'):
-            host = 'http://68.64.179.234:8000'  # 我还能睡
         
-        elif auth_code == 'cchppdqk24':  # 我的授权码
-            host = 'http://68.64.179.202:8000'  # 西瓜
+        host = self._get_host_by_auth(auth_code)
 
         print("使用的host:", host)
         # 获取是否禁用去重
@@ -373,6 +422,137 @@ class AccountManagerGUI:
             self.root.after(0, lambda: self.add_btn.config(
                 state=NORMAL, text="添加账号"))
 
+    def load_blacklist(self):
+        """从服务端加载黑名单并显示"""
+        threading.Thread(target=self._load_blacklist_thread,
+                         daemon=True).start()
+
+    def _load_blacklist_thread(self):
+        auth_code = self.auth_code_var.get().strip()
+        host = self._get_host_by_auth(auth_code)
+
+        try:
+            response = requests.get(f"{host}/blacklist", timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                blacklist = data.get("blacklist", [])
+                # 更新 UI
+                self.root.after(
+                    0, lambda: self._update_blacklist_display(blacklist))
+            else:
+                self.root.after(0, lambda: self._update_blacklist_display([]))
+        except Exception as e:
+            print(f"加载黑名单失败: {e}")
+            self.root.after(0, lambda: self._update_blacklist_display([]))
+
+    def _update_blacklist_display(self, blacklist):
+        self.blacklist_display.delete(0, tk.END)
+        for acc in sorted(blacklist):
+            self.blacklist_display.insert(tk.END, acc)
+
+    def _get_host_by_auth(self, auth_code):
+        """复用 host 逻辑"""
+        if auth_code.startswith('sg'):
+            return 'http://38.55.193.129:8000'
+        elif IS_TEST:
+            return BASE_URL
+        elif auth_code.startswith('0079'):
+            return 'http://38.55.198.178:8000'
+        elif auth_code.startswith('xg'):
+            return 'http://68.64.179.202:8000'
+        elif auth_code.startswith('whns'):
+            return 'http://68.64.179.234:8000'
+        elif auth_code.startswith('bing'):
+            return 'http://68.64.179.207:8000'
+        elif auth_code == 'cchppdqk24':
+            return 'http://68.64.179.202:8000'
+        else:
+            return BASE_URL
+
+    def add_to_blacklist(self):
+        if not is_access:
+            messagebox.showerror("错误", "❌ 无权限，请联系微信:w5775213344")
+            return
+
+        raw = self.blacklist_input.get("1.0", tk.END).strip()
+        if not raw:
+            messagebox.showwarning("输入为空", "请输入要加入黑名单的账号（每行一个）")
+            return
+
+        accounts = [line.strip() for line in raw.splitlines() if line.strip()]
+        if not accounts:
+            messagebox.showwarning("无效输入", "没有有效的账号内容")
+            return
+
+        self.add_bl_btn.config(state=DISABLED, text="处理中...")
+        self.log(f"正在将 {len(accounts)} 个账号加入黑名单...")
+
+        threading.Thread(target=self._add_blacklist_thread,
+                         args=(accounts,), daemon=True).start()
+
+    def _add_blacklist_thread(self, accounts):
+        auth_code = self.auth_code_var.get().strip()
+        host = self._get_host_by_auth(auth_code)
+
+        try:
+            response = requests.post(
+                f"{host}/blacklist", json={"accounts": accounts}, timeout=15)
+            if response.status_code == 201:
+                data = response.json()
+                msg = f"✅ 黑名单更新成功：{data['message']}，跳过 {data['skipped']} 个"
+                self.log(msg)
+                # 自动刷新显示
+                self.root.after(0, self.load_blacklist)
+            else:
+                error = response.json().get("error", "未知错误")
+                self.log(f"❌ 加入黑名单失败: {error}")
+        except Exception as e:
+            self.log(f"❌ 网络异常（黑名单）: {str(e)}")
+        finally:
+            self.root.after(0, lambda: self.add_bl_btn.config(
+                state=NORMAL, text="加入黑名单"))
+
+    def remove_selected_blacklist(self):
+        """删除用户在 Listbox 中选中的黑名单账号"""
+        selections = self.blacklist_display.curselection()
+        if not selections:
+            messagebox.showwarning("未选择", "请先选择要删除的黑名单账号")
+            return
+
+        # 获取选中的账号文本
+        selected_accounts = [self.blacklist_display.get(i) for i in selections]
+
+        # 构造确认消息（最多显示前5个，避免太长）
+        preview = "\n".join(selected_accounts[:5])
+        if len(selected_accounts) > 5:
+            preview += f"\n... 等共 {len(selected_accounts)} 个账号"
+
+        confirm = messagebox.askyesno(
+            "确认删除",
+            f"确定要从黑名单中移除以下 {len(selected_accounts)} 个账号？\n\n{preview}"
+        )
+        if not confirm:
+            return
+
+        self.log(f"正在移除 {len(selected_accounts)} 个黑名单账号...")
+        threading.Thread(target=self._remove_blacklist_thread, args=(selected_accounts,), daemon=True).start()
+
+    def _remove_blacklist_thread(self, accounts):
+        auth_code = self.auth_code_var.get().strip()
+        host = self._get_host_by_auth(auth_code)
+
+        try:
+            response = requests.post(
+                f"{host}/blacklist/remove", json={"accounts": accounts}, timeout=10)
+            if response.status_code == 200:
+                self.log("✅ 黑名单删除成功")
+                self.root.after(0, self.load_blacklist)
+            else:
+                error = response.json().get("error", "未知错误")
+                self.log(f"❌ 移除失败: {error}")
+        except Exception as e:
+            self.log(f"❌ 网络异常（移除黑名单）: {str(e)}")
+
     def fetch_stats(self):
         threading.Thread(target=self._fetch_stats_thread, daemon=True).start()
 
@@ -380,19 +560,7 @@ class AccountManagerGUI:
         auth_code = self.auth_code_var.get().strip()
         host = ''
 
-        if auth_code.startswith('sg'):
-            host = 'http://38.55.193.129:8000'  # 时光
-        elif IS_TEST:
-            host = BASE_URL
-        elif auth_code.startswith('0079'):
-            host = 'http://38.55.198.178:8000'  # 0079
-        elif auth_code.startswith('xg'):
-            host = 'http://68.64.179.202:8000'  # 西瓜
-        elif auth_code.startswith('whns'):
-            host = 'http://68.64.179.234:8000'  # 我还能睡
-
-        elif auth_code == 'cchppdqk24':  # 我的授权码
-            host = 'http://68.64.179.202:8000'  # 西瓜
+        host = self._get_host_by_auth(auth_code)
 
         print("使用的host:", host)
         try:

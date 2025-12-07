@@ -36,9 +36,17 @@ class Account(Base):
     extracted_by = Column(String(255), nullable=True)
     extracted_at = Column(DateTime, nullable=True)
 
+class Blacklist(Base):
+    __tablename__ = 'blacklist'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account = Column(String(255), nullable=False, unique=True)  # 黑名单必须唯一
+    added_at = Column(DateTime, default=datetime.utcnow)
 
 # 创建表（如果不存在）
 Base.metadata.create_all(bind=engine)
+
+
 
 # ----------------------------
 # Flask App
@@ -98,6 +106,78 @@ def add_accounts():
             "skipped_due_to_duplicate_or_exist": skipped
         }), 201
 
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+
+# ----------------------------
+# 黑名单管理接口
+# ----------------------------
+
+@app.route('/blacklist', methods=['GET'])
+def get_blacklist():
+    session = SessionLocal()
+    try:
+        blacklist_entries = session.query(Blacklist.account).all()
+        accounts = [row[0] for row in blacklist_entries]
+        return jsonify({"blacklist": accounts}), 200
+    finally:
+        session.close()
+
+@app.route('/blacklist', methods=['POST'])
+def add_to_blacklist():
+    data = request.get_json()
+    accounts_list = data.get('accounts', [])
+    if not isinstance(accounts_list, list):
+        return jsonify({"error": "'accounts' must be a list"}), 400
+
+    raw_accounts = [acc.strip() for acc in accounts_list if isinstance(acc, str) and acc.strip()]
+    if not raw_accounts:
+        return jsonify({"error": "No valid accounts provided"}), 400
+
+    session = SessionLocal()
+    try:
+        # 过滤掉已存在的（避免重复报错）
+        existing = session.query(Blacklist.account).filter(
+            Blacklist.account.in_(raw_accounts)
+        ).all()
+        existing_set = {row[0] for row in existing}
+        new_accounts = [Blacklist(account=acc) for acc in raw_accounts if acc not in existing_set]
+
+        if new_accounts:
+            session.bulk_save_objects(new_accounts)
+            session.commit()
+
+        return jsonify({
+            "message": f"{len(new_accounts)} 个账号加入黑名单",
+            "skipped": len(raw_accounts) - len(new_accounts)
+        }), 201
+    except Exception as e:
+        session.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+
+@app.route('/blacklist/remove', methods=['POST'])
+def remove_from_blacklist():
+    data = request.get_json()
+    accounts_list = data.get('accounts', [])
+    if not isinstance(accounts_list, list):
+        return jsonify({"error": "'accounts' must be a list"}), 400
+
+    raw_accounts = [acc.strip() for acc in accounts_list if isinstance(acc, str) and acc.strip()]
+    if not raw_accounts:
+        return jsonify({"error": "No valid accounts provided"}), 400
+
+    session = SessionLocal()
+    try:
+        deleted_count = session.query(Blacklist).filter(
+            Blacklist.account.in_(raw_accounts)
+        ).delete(synchronize_session=False)
+        session.commit()
+        return jsonify({"message": f"成功移除 {deleted_count} 个黑名单账号"}), 200
     except Exception as e:
         session.rollback()
         return jsonify({"error": str(e)}), 500
