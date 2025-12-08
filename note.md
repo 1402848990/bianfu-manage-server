@@ -113,8 +113,11 @@ ps aux | grep gunicorn
 
 cd /var/vmq
 
+<!-- 创建日志目录 -->
+sudo mkdir -p /var/log/gunicorn
+
 nohup gunicorn \
-  --bind 0.0.0.0:5500 \
+  --bind 0.0.0.0:8000 \
   --workers 2 \
   --timeout 60 \
   --access-logfile /var/log/gunicorn/access.log \

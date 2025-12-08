@@ -13,8 +13,8 @@ from PJYSDK import *
 # ----------------------------
 # 配置
 # ----------------------------
-IS_TEST = False
-BASE_URL = "http://localhost:5500"  # 请根据实际修改
+IS_TEST = False  # 是否为测试环境
+BASE_URL = "http://localhost:8000"  # 请根据实际修改
 # BASE_URL = "http://68.64.179.202:8000"  # 请根据实际修改
 REFRESH_INTERVAL = 4000  # 5秒，单位毫秒
 is_access = False
@@ -63,7 +63,8 @@ class AccountManagerGUI:
     def __init__(self, root):
         global is_access
         self.root = root
-        self.root.title("蝙蝠账号管理系统【作者w5775213344】")
+        # self.root.title("蝙蝠账号管理系统【作者w5775213344】")
+        self.root.title("蝙蝠账号管理系统【作者tg:@maotai8866】")
         # self.root.title("蝙蝠账号管理系统")
         self.root.geometry("1400x1000")
         self.root.minsize(900, 800)
@@ -144,7 +145,8 @@ class AccountManagerGUI:
 
         if not is_access:
             # 弹窗提示
-            messagebox.showerror("错误", f"❌ 无权限，请联系微信:w5775213344")
+            # messagebox.showerror("错误", f"❌ 无权限，请联系微信:w5775213344")
+            messagebox.showerror("错误", f"❌ 无权限，请联系tg:@maotai8866")
             return
 
         # 启动自动刷新
@@ -232,7 +234,7 @@ class AccountManagerGUI:
         self.account_input.pack(fill=BOTH, expand=YES, pady=(0, 10))
 
         # ===== 黑名单管理区域 =====
-        blacklist_frame = ttk.Labelframe(main_frame, text="黑名单管理", padding=15)
+        blacklist_frame = ttk.Labelframe(main_frame, text="黑名单管理【黑名单ID不会被自动拉进群】", padding=15)
         blacklist_frame.pack(fill=X, pady=(0, 20))
 
         # 上方：输入框（用于新增）
@@ -262,7 +264,7 @@ class AccountManagerGUI:
 
         self.refresh_bl_btn = ttk.Button(
             bl_btn_frame,
-            text="刷新列表",
+            text="刷新黑名单",
             bootstyle=INFO,
             command=self.load_blacklist,
             width=15
@@ -271,7 +273,7 @@ class AccountManagerGUI:
 
         self.del_bl_btn = ttk.Button(
             bl_btn_frame,
-            text="删除选中",
+            text="删除选中黑名单",
             bootstyle=DANGER,
             command=self.remove_selected_blacklist,
             width=15
@@ -373,7 +375,8 @@ class AccountManagerGUI:
 
     def add_accounts(self):
         if not is_access:
-            messagebox.showerror("错误", f"❌ 无权限，请联系微信:w5775213344")
+            # messagebox.showerror("错误", f"❌ 无权限，请联系微信:w5775213344")
+            messagebox.showerror("错误", f"❌ 无权限，请联系tg:@maotai8866")
             return
         raw = self.account_input.get("1.0", tk.END).strip()
         if not raw:
